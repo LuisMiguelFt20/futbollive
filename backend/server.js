@@ -800,6 +800,46 @@ app.get('/api/health',async(req,res)=>{await syncFootballQuota();daily();res.jso
 
 });});
 
+
+// Escudos complementarios para partidos BSD: se consultan bajo demanda y
+// se reutilizan durante 24 horas para proteger la cuota gratuita.
+app.get('/api/escudos',async(req,res)=>{
+  const leagueId=Number(req.query.league);
+  const code=FOOTBALL_DATA_CODES.get(leagueId);
+  if(!code)return res.json({items:[],source:'unavailable',notice:'No hay catálogo de escudos para esta liga.'});
+  if(!configured('FOOTBALL_DATA_TOKEN'))return res.json({items:[],source:'unavailable',notice:'football-data.org no configurada.'});
+  try{
+    const today=peruDate();
+    const seasonNow=Number(today.slice(0,4))-(Number(today.slice(5,7))<7?1:0);
+    const result=await remember(`crests:${code}:${seasonNow}`,24*3600_000,async()=>{
+      const teams=new Map();
+      const add=(t)=>{
+        const logo=t?.crest||t?.logo||null;
+        if(!logo||!/^https:\/\//.test(logo))return;
+        const name=t.name||t.team||'';
+        const key=String(name).toLowerCase();
+        if(key&&!teams.has(key))teams.set(key,{name,shortName:t.shortName||'',tla:t.tla||'',logo});
+      };
+      let warning=null;
+      // La clasificación actual ya se consulta para la tabla; aprovechar su caché.
+      try{
+        const current=await footballDataStandings(leagueId,null);
+        for(const table of current.value.standings||[])for(const row of table.table||[])add(row.team);
+      }catch(e){warning=e.message;}
+      // La temporada 2024 incorpora clubes que ya no están en la tabla actual
+      // (Venezia, Monza, etc.). Si el plan impide históricos, no bloqueamos nada.
+      try{
+        const historical=await remember(`football-data:crests:${code}:2024`,24*3600_000,
+          ()=>httpJson(`${FOOTBALL_DATA_API}/competitions/${code}/teams?season=2024`,footballDataAuth()),
+          {staleOnError:true});
+        for(const team of historical.value.teams||[])add(team);
+      }catch(e){warning=warning?`${warning}; ${e.message}`:e.message;}
+      return {items:[...teams.values()],warning};
+    });
+    res.json({items:result.value.items,source:'football-data.org',stale:result.stale,warning:result.value.warning||null});
+  }catch(e){apiError(res,e)}
+});
+
 app.get('/api/football-data/estado',(req,res)=>res.json({configured:configured('FOOTBALL_DATA_TOKEN'),provider:'football-data.org',competitions:[...FOOTBALL_DATA_CODES].map(([leagueId,code])=>({leagueId,code}))}));
 
 app.get('/api/bsd/prueba',async(req,res)=>{

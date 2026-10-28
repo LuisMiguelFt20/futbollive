@@ -25,6 +25,24 @@ const API_ORIGIN=String(import.meta.env.VITE_API_URL||'').trim().replace(/\/+$/,
 const apiUrl=(path)=>`${API_ORIGIN}/api${path}`;
 async function fetchJson(path){const response=await fetch(apiUrl(path));const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||`HTTP ${response.status}`);return data}
 function useRemote(path,refresh=0,enabled=true){const [state,setState]=useState({data:null,loading:false,error:null});useEffect(()=>{if(!enabled||!path)return;let active=true;let controller=new AbortController();const run=async()=>{if(!active)return;setState(s=>({...s,loading:!s.data,error:null}));try{const r=await fetch(apiUrl(path),{signal:controller.signal});const j=await r.json();if(!r.ok||j.error)throw new Error(j.error||`HTTP ${r.status}`);if(active)setState({data:j,loading:false,error:null});}catch(e){if(active&&e.name!=='AbortError')setState(s=>({...s,loading:false,error:e.message}));}};run();let timer=refresh?setInterval(run,refresh):null;return()=>{active=false;controller.abort();if(timer)clearInterval(timer)}},[path,refresh,enabled]);return state}
+
+// Resolver nombres diferentes entre BSD y football-data.org sin mezclar IDs.
+function logoName(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\b(fc|cf|ac|ssc|calcio|club|football|1908|1913|1919)\b/g,' ').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ')}
+const LOGO_ALIASES={
+ 'inter':'internazionale','inter milan':'internazionale','ac milan':'milan',
+ 'ssc napoli':'napoli','as roma':'roma','ss lazio':'lazio',
+ 'juve':'juventus','hellas verona':'verona','atalanta bc':'atalanta',
+ 'parma calcio':'parma','bologna fc':'bologna','udinese calcio':'udinese'
+};
+function crestForTeam(name,entries){
+ const n=logoName(name), alias=logoName(LOGO_ALIASES[n]||n);
+ if(!n||n.length<3)return null;
+ for(const t of entries){
+   const names=[t.name,t.shortName].map(logoName).filter(Boolean);
+   if(names.includes(n)||names.includes(alias))return t.logo||null;
+ }
+ return null;
+}
 function Crest({src,name='',size=32}){const [bad,setBad]=useState(false);useEffect(()=>setBad(false),[src]);return src&&!bad?<img className="crest" style={{width:size,height:size}} src={src} loading="lazy" alt="" onError={()=>setBad(true)}/>:<span className="crest-fallback" style={{width:size,height:size,fontSize:size*.30}}>{name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'⚽'}</span>}
 function Empty({message='No hay datos para estos filtros.',sub='',icon:Icon=Info}){return <div className="empty"><Icon size={25}/><b>{message}</b>{sub&&<small>{sub}</small>}</div>}
 function StatusNote({data,error,loading}){return <>{error&&<div className="alert danger"><WifiOff size={16}/>{error}</div>}{data?.source==='demo'&&<div className="alert"><Info size={16}/>Modo demostración: los ejemplos no son resultados reales. Agrega la clave correspondiente en <code>backend/.env</code>.</div>}{data?.partial&&<div className="alert"><Info size={16}/>Algunos días no pudieron consultarse: {data.errors?.slice(0,2).join(' · ')}</div>}{data?.source==='bsd'&&<div className="alert provider-notice"><BadgeCheck size={16}/>Datos reales obtenidos de BSD.</div>}{data?.source==='mixed'&&<div className="alert provider-notice"><BadgeCheck size={16}/>Datos combinados de API-Football y BSD, sin mezclar identificadores de los proveedores.</div>}{data?.stale&&<div className="alert"><Clock3 size={16}/>Mostrando última información guardada para ahorrar cuota o por una falla temporal.</div>}{data?.warnings?.length&&data?.source!=='youtube'&&<div className="alert provider-notice"><Info size={16}/>{data.warnings.slice(0,1).join(' · ')}</div>}{loading&&!data&&<div className="skeleton-line"/>}</>}
@@ -100,7 +118,22 @@ function App(){
  const teamState=useRemote(activeTeam?.id?`/futbol/equipo/${activeTeam.id}`:null,0,!!activeTeam?.id);
  useEffect(()=>{fetchJson('/ligas').then(d=>setLeagues(d.items||demoLeagues)).catch(()=>{});const check=()=>fetchJson('/health').then(setApiHealth).catch(()=>{});check();const id=setInterval(check,120000);return()=>clearInterval(id)},[]);
  useEffect(()=>{const t=setInterval(()=>{setTick(x=>x+1);const today=dateKey(new Date());setWeekStart(previous=>previous===today?previous:today);},60000);return()=>clearInterval(t)},[]);
- const dataMatches=matchesState.data?.items||[];const liveMatches=liveState.data?.items||[];
+ const crestState=useRemote(selectedLeague&&[39,140,78,135,61].includes(selectedLeague)?`/escudos?league=${selectedLeague}`:null,0,Boolean(selectedLeague&&[39,140,78,135,61].includes(selectedLeague)));
+ const crestEntries=useMemo(()=>{
+   const result=[...(crestState.data?.items||[])];
+   if(standingsState.data?.source==='football-data.org'){
+     for(const group of standingsState.data.groups||[])for(const row of group.rows||[])if(row.logo)result.push({name:row.team,shortName:row.team,logo:row.logo});
+   }
+   return result;
+ },[crestState.data,standingsState.data]);
+ const enrichMatch=(m)=>{
+   if(!selectedLeague||m.leagueId!==selectedLeague||!crestEntries.length)return m;
+   const homeLogo=m.homeLogo||crestForTeam(m.home,crestEntries);
+   const awayLogo=m.awayLogo||crestForTeam(m.away,crestEntries);
+   return homeLogo===m.homeLogo&&awayLogo===m.awayLogo?m:{...m,homeLogo,awayLogo};
+ };
+ const dataMatches=(matchesState.data?.items||[]).map(enrichMatch);
+ const liveMatches=(liveState.data?.items||[]).map(enrichMatch);
  const sourceDemo=matchesState.data?.source==='demo'||(!apiHealth?.configured?.football&&!apiHealth?.configured?.bsd);
  const filteredByLeague=useMemo(()=>dataMatches.filter(m=>!selectedLeague||m.leagueId===selectedLeague),[dataMatches,selectedLeague]);
  const qs=search.trim().toLowerCase();
