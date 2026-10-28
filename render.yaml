@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: futbollive-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: FOOTBALL_API_KEY
+        sync: false
+      - key: BZZOIRO_API_KEY
+        sync: false
+      - key: FOOTBALL_DATA_TOKEN
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: FOOTBALL_DAILY_BUDGET
+        value: '50'
+      - key: YOUTUBE_DAILY_SEARCH_BUDGET
+        value: '5'
+      - key: NEWS_PUBLIC_ENABLED
+        value: 'false'

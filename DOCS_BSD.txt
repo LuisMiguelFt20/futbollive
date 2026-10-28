@@ -1,0 +1,12 @@
+Documentación oficial BSD (API REST de fútbol):
+https://sports.bzzoiro.com/docs/football/
+https://sports.bzzoiro.com/docs/football/events/
+https://sports.bzzoiro.com/docs/conventions/
+
+Claves: https://sports.bzzoiro.com/dashboard/
+
+Autenticación: Authorization: Token TU_TOKEN
+Endpoint de prueba: /api/bsd/prueba
+Rutas de FutbolLive: /api/futbol/dos-dias, /api/futbol/en-vivo
+Compatibilidad: /api/futbol/semana, /api/futbol/partidos
+Probar BSD directamente sin cambiar configuración: /api/futbol/dos-dias?provider=bsd
