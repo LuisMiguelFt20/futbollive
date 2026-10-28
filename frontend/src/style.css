@@ -353,3 +353,14 @@
 .home-result-teams span{min-width:0;overflow-wrap:anywhere}
 .home-result-teams span:last-child{text-align:right}
 .home-result-teams strong{text-align:center;color:#18dd98;white-space:nowrap}
+
+/* Búsquedas manuales de resúmenes: resultados no verificados. */
+.manual-video-search{margin-top:24px;border:1px solid #24475a;border-radius:15px;padding:18px;background:rgba(14,39,55,.55)}
+.manual-video-search h3{display:flex;align-items:center;gap:9px;margin:0 0 8px;font-size:17px}
+.manual-video-search p{margin:0 0 14px;color:#a1c3d5;font-size:13px;line-height:1.5}
+.manual-video-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px}
+.manual-video-item{display:flex;justify-content:space-between;align-items:center;gap:12px;text-decoration:none;border:1px solid #2b5266;border-radius:10px;padding:12px;color:inherit;background:rgba(14,45,63,.65)}
+.manual-video-item:hover{border-color:#19d88f}
+.manual-video-item span:first-child{display:flex;flex-direction:column;gap:4px}
+.manual-video-item small{color:#8db5cb}
+.manual-video-item span:last-child{color:#1fe39d;white-space:nowrap;font-size:12px;font-weight:700}

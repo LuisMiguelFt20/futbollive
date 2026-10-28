@@ -1280,7 +1280,7 @@ function videoIsMatchSummary(item,game,windowEnd){
 
   // Publicado después del partido (no una previa) y dentro de hoy/mañana.
 
-  return published>=kickoff+70*60_000 && published<=Math.min(Date.now(),windowEnd);
+  return published>=kickoff+45*60_000 && published<=Math.min(Date.now(),windowEnd);
 
 }
 
@@ -1300,7 +1300,7 @@ function youtubeItem(item,game){return {
 
 async function searchHighlightsForFixture(game,windowEnd){
 
-  const cacheKey=`youtube:match-highlights:v2:${game.id}:${peruDate()}`;
+  const cacheKey=`youtube:match-highlights:v3:${game.id}:${peruDate()}`;
 
   return remember(cacheKey,2*3600_000,async()=>{
 
@@ -1312,9 +1312,9 @@ async function searchHighlightsForFixture(game,windowEnd){
 
       part:'snippet',type:'video',videoEmbeddable:'true',maxResults:'18',order:'relevance',
 
-      q:`${game.home} ${game.away} highlights resumen goles`,
+      q:`${game.home} ${game.away} highlights`,
 
-      publishedAfter:new Date(Date.parse(game.date)+70*60_000).toISOString(),
+      publishedAfter:new Date(Date.parse(game.date)+45*60_000).toISOString(),
 
       publishedBefore:new Date(Math.min(Date.now(),windowEnd)).toISOString(),
 
@@ -1379,7 +1379,10 @@ app.get('/api/videos',async(req,res)=>{
     .filter(g=>!selectedLeague || g.leagueId === selectedLeague)
     .filter(g=>g.id && g.home && g.away && Number.isFinite(Date.parse(g.date||'')))
     .map(g=>[String(g.id),g])).values()]
-    .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    // Priorizar partidos de las ligas destacadas: hay más posibilidades de que
+    // exista un resumen publicado. Los demás siguen disponibles al paginar.
+    .sort((a,b)=>Number(Boolean(b.leagueId))-Number(Boolean(a.leagueId)) ||
+      (b.timestamp||0)-(a.timestamp||0));
 
   // Lotes de cinco encuentros. El siguiente lote solo se consulta al pulsar 'Siguientes'.
 
@@ -1403,17 +1406,28 @@ app.get('/api/videos',async(req,res)=>{
 
   const uniques=[...new Map(results.map(v=>[v.id,v])).values()];
 
+  // Ofrecer una búsqueda manual para cada encuentro si la API no encuentra
+  // videos confirmados. No son videos verificados ni consumen cuota adicional.
+  const matchedFixtureIds=new Set(uniques.map(v=>String(v.fixtureId)));
+  const searchSuggestions=candidates.filter(g=>!matchedFixtureIds.has(String(g.id))).map(g=>({
+    fixtureId:g.id,home:g.home,away:g.away,score:g.score,league:g.league,
+    matchDate:g.date,verified:false,
+    searchUrl:'https://www.youtube.com/results?search_query='+encodeURIComponent(
+      `${g.home} ${g.away} ${String(g.date).slice(0,10)} resumen highlights`
+    )
+  }));
+
   const count=uniques.length;
 
   let notice;
 
   if(!finished.length)notice=fixtureErrors.length?'No se pudieron obtener todos los partidos para validar videos.':'No hay partidos finalizados de esta liga en hoy y mañana. Los pendientes o en vivo aún no tienen resúmenes finales.';
 
-  else if(!count)notice='Todavía no encontramos resúmenes que coincidan con ambos equipos de los encuentros revisados. No mostraremos videos de otras fechas ni de otros partidos.';
+  else if(!count)notice='No encontramos videos confirmados para estos encuentros. Puedes buscar manualmente resúmenes en YouTube desde las tarjetas inferiores; no están verificados por FutbolLive.';
 
   else notice='Se muestran únicamente resúmenes cuyo título coincide con ambos equipos de un partido finalizado de hoy o mañana. Los videos son publicados por canales de YouTube; revisa su fuente.';
 
-  res.json({items:uniques,source:'youtube',start,end,day:requestedDay,leagueId:selectedLeague,
+  res.json({items:uniques,searchSuggestions,source:'youtube',start,end,day:requestedDay,leagueId:selectedLeague,
 
     finishedMatches:finished.length,checkedMatches:candidates.length,matchedVideos:count,
 
