@@ -344,3 +344,12 @@
 .news-search-submit{background:#19e494;color:#032419}
 .news-search-clear{background:transparent;color:var(--text,#effaff)}
 @media(max-width:640px){.news-search-form label{flex-basis:100%}.news-search-form button{flex:1}}
+
+/* Inicio: panel de resultados reales BSD en lugar de Noticias */
+.home-match-results{display:flex;flex-direction:column;gap:10px;padding:12px 16px;max-height:410px;overflow:auto}
+.home-result-item{border:1px solid rgba(115,169,195,.2);border-radius:10px;padding:10px;background:rgba(4,40,53,.22)}
+.home-result-league{display:block;font-size:11px;color:#89b3c8;margin-bottom:7px}
+.home-result-teams{display:grid;grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr);gap:8px;align-items:center;font-size:13px}
+.home-result-teams span{min-width:0;overflow-wrap:anywhere}
+.home-result-teams span:last-child{text-align:right}
+.home-result-teams strong{text-align:center;color:#18dd98;white-space:nowrap}
