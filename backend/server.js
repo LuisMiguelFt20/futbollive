@@ -12,6 +12,8 @@ const PORT = Number(process.env.PORT || 3001);
 const SPORT_API = 'https://v3.football.api-sports.io';
 const FOOTBALL_DATA_API = 'https://api.football-data.org/v4';
 const BSD_API = 'https://sports.bzzoiro.com/api/v2';
+// En Render: FOOTBALL_PRIMARY_DISABLED=true utiliza BSD sin llamar a la cuenta suspendida.
+const PRIMARY_DISABLED = process.env.FOOTBALL_PRIMARY_DISABLED === 'true';
 // Identificadores API-Football -> football-data.org para tablas actuales.
 const FOOTBALL_DATA_CODES = new Map([[39,'PL'],[140,'PD'],[78,'BL1'],[135,'SA'],[61,'FL1']]);
 const TZ = 'America/Lima';
@@ -141,29 +143,32 @@ function resolveBSDLeague(name,country){
   return null;
 }
 function bsdTimestamp(x){
-  const raw=x.event_date||x.date||x.kickoff||x.start_time||null;
+  const raw=x.event_date||x.date||x.kickoff||x.start_time||x.time?.kickoff_at||x.kickoff_at||null;
   return raw&&Number.isFinite(Date.parse(raw))?new Date(raw).toISOString():null;
 }
-function bsdGame(x,leagueIndex=new Map()){
+function bsdGame(x,leagueIndex=new Map(),fromLiveFeed=false){
   const rawLeagueId=Number(x.league_id||x.league?.id)||null;
   const leagueInfo=leagueIndex.get(rawLeagueId)||{};
   const name=x.league_name||x.league?.name||leagueInfo.name||'Competición';
   const country=x.country||x.league_country||x.league?.country||leagueInfo.country||'';
   const leagueId=resolveBSDLeague(name,country);
   const league=LEAGUES.find(l=>l.id===leagueId);
-  const status=bsdNormalized(x.status||'');
-  const type=status==='live'?'live':status==='finished'?'finished':status==='upcoming'?'upcoming':'other';
+  const status=bsdNormalized(x.status||x.time?.status||'');
+  // /events/live/ solo devuelve encuentros en juego, incluso cuando el estado
+  // no está presente en la raíz de la respuesta compacta.
+  const type=fromLiveFeed||status==='live'?'live':status==='finished'?'finished':status==='upcoming'?'upcoming':'other';
   const date=bsdTimestamp(x);
-  const home=x.home_team?.name||x.home_team_name||x.home_team||x.home?.name||'Local';
-  const away=x.away_team?.name||x.away_team_name||x.away_team||x.away?.name||'Visitante';
+  const home=x.home_team?.name||x.home_team_name||(typeof x.home_team==='string'?x.home_team:null)||x.home?.name||'Local';
+  const away=x.away_team?.name||x.away_team_name||(typeof x.away_team==='string'?x.away_team:null)||x.away?.name||'Visitante';
   const homeGoals=x.home_score??x.score?.home??null;
   const awayGoals=x.away_score??x.score?.away??null;
-  const minute=x.current_minute??x.minute??null;
-  const id=x.id==null?null:`bsd-${x.id}`;
+  const minute=x.current_minute??x.minute??x.time?.minute??null;
+  const eventId=x.id??x.event_id??null;
+  const id=eventId==null?null:`bsd-${eventId}`;
   return {
     id,date,timestamp:date?Math.floor(Date.parse(date)/1000):0,
     status:type==='live'?'LIVE':type==='finished'?'FT':type==='upcoming'?'NS':(x.status||'?'),
-    statusText:String(x.status||''),minute,
+    statusText:String(x.status||x.time?.status||'En vivo'),minute,
     type,live:type==='live',finished:type==='finished',upcoming:type==='upcoming',
     home:String(home),away:String(away),
     // Prohibido enviar IDs de otro proveedor a /api/futbol/equipo/:id.
@@ -239,13 +244,13 @@ async function bsdFixtures(start,end){
 }
 async function bsdLive(){
   const [index,r]=await Promise.all([bsdLeagues(),bsdRequest('/events/live/',3*60_000)]);
-  return {items:bsdItems(r.value).map(x=>bsdGame(x,index)).filter(x=>x.live&&x.id),
+  return {items:bsdItems(r.value).map(x=>bsdGame(x,index,true)).filter(x=>x.id),
     stale:r.stale,saved:r.saved,warning:r.warning||null};
 }
 async function dailyFixtures(day,ttl,{preferBSD=false}={}){
   const end=plusDays(peruDate(),1);
   let primaryError=null,stalePrimary=null;
-  if(!preferBSD&&configured('FOOTBALL_API_KEY')){
+  if(!preferBSD&&!PRIMARY_DISABLED&&configured('FOOTBALL_API_KEY')){
     try{
       const r=await sport(`/fixtures?date=${day}&timezone=America%2FLima`,ttl);
       if(!r.stale)return {items:(r.value.response||[]).map(fixture),source:'api-football',stale:false,saved:r.saved};
@@ -390,7 +395,7 @@ app.get('/api/health',async(req,res)=>{await syncFootballQuota();daily();res.jso
   footballBudget:{used:state.used,limit:DAILY_LIMIT,remaining:Math.max(0,DAILY_LIMIT-state.used),resetAtUTC:nextQuotaResetUTC(),verifiedWithProvider:!footballQuotaSyncError && lastFootballQuotaSync>0,syncWarning:footballQuotaSyncError||null},
   windowDays:2,weekDays:2,
   classificationProvider:configured('FOOTBALL_DATA_TOKEN')?'football-data.org para 5 ligas europeas':'API-Football (sujeta a su plan)',
-  matchProviders:{primary:'API-Football',fallback:'BSD',fallbackEnabled:configured('BZZOIRO_API_KEY')},
+  matchProviders:{primary:PRIMARY_DISABLED?'BSD':'API-Football',fallback:'BSD',fallbackEnabled:configured('BZZOIRO_API_KEY'),footballPrimaryDisabled:PRIMARY_DISABLED},
   youtubeSearchBudget:{used:youtubeBudget().used,limit:YOUTUBE_SEARCH_LIMIT,remaining:Math.max(0,YOUTUBE_SEARCH_LIMIT-youtubeBudget().used)},
   today:peruDate(),tomorrow:plusDays(peruDate(),1)
 });});
@@ -449,7 +454,7 @@ app.get('/api/futbol/en-vivo',async(req,res)=>{
   if(!configured('FOOTBALL_API_KEY')&&!configured('BZZOIRO_API_KEY'))return demoResponse(res,[],{notice:'Configura al menos una API de partidos.'});
   const leagueId=Number(req.query.league)||null;
   let primaryError=null,old=null;
-  if(req.query.provider!=='bsd'&&configured('FOOTBALL_API_KEY')){
+  if(req.query.provider!=='bsd'&&!PRIMARY_DISABLED&&configured('FOOTBALL_API_KEY')){
     try{
       const recent=state.cache['sport:/fixtures?live=all']?.value?.response||[];
       const ttl=recent.length?15*60_000:60*60_000;
