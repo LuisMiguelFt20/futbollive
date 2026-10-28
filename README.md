@@ -278,3 +278,8 @@ Conserva `.env` y la carpeta `.runtime` al sustituir el proyecto. Un `used:75` c
 Esta edición sincroniza la cuota local con `GET https://v3.football.api-sports.io/status` (no consume la cuota diaria) cada dos minutos, incluyendo cuando se abre `/api/health`. El indicador `footballBudget.verifiedWithProvider` señala si se pudo verificar; si falla la consulta, la aplicación NO desbloquea solicitudes a ciegas.
 
 Por ejemplo, si el dashboard oficial indica 11 solicitudes usadas y el límite local de seguridad es 75, FutbolLive podrá mostrar `used: 11, remaining: 64` después de la sincronización. Esto no aumenta ni evita los límites reales del proveedor. El token sigue exclusivamente en `backend/.env`. No borres `.runtime` ni cambies tu clave.
+
+## Búsqueda de noticias en la publicación pública
+
+La integración opcional de GNews para estudiantes está explicada en
+`NOTICIAS_GNEWS_LEER_PRIMERO.md`. No requiere colocar claves en Vercel.

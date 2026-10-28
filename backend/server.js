@@ -386,7 +386,7 @@ const DEMO_TABLE=[['Liverpool',21,14,4,3,46],['Arsenal',21,13,5,3,44],['Manchest
 
 app.get('/api/health',async(req,res)=>{await syncFootballQuota();daily();res.json({
   ok:true,service:'FutbolLive',
-  configured:{football:configured('FOOTBALL_API_KEY'),bsd:configured('BZZOIRO_API_KEY'),news:configured('NEWS_API_KEY'),youtube:configured('YOUTUBE_API_KEY'),footballData:configured('FOOTBALL_DATA_TOKEN')},
+  configured:{football:configured('FOOTBALL_API_KEY'),bsd:configured('BZZOIRO_API_KEY'),news:configured('NEWS_API_KEY'),gnews:configured('GNEWS_API_KEY'),gnewsEducationApproved:process.env.GNEWS_EDUCATION_APPROVED==='true',youtube:configured('YOUTUBE_API_KEY'),footballData:configured('FOOTBALL_DATA_TOKEN')},
   footballBudget:{used:state.used,limit:DAILY_LIMIT,remaining:Math.max(0,DAILY_LIMIT-state.used),resetAtUTC:nextQuotaResetUTC(),verifiedWithProvider:!footballQuotaSyncError && lastFootballQuotaSync>0,syncWarning:footballQuotaSyncError||null},
   windowDays:2,weekDays:2,
   classificationProvider:configured('FOOTBALL_DATA_TOKEN')?'football-data.org para 5 ligas europeas':'API-Football (sujeta a su plan)',
@@ -515,6 +515,27 @@ function mediaTopic(req){const league=LEAGUES.find(x=>x.id===Number(req.query.le
 // El calendario HOY/MAÑANA aplica a PARTIDOS y VIDEOS, no a noticias atrasadas.
 app.get('/api/noticias',async(req,res)=>{
  try{
+  // GNews educativo: permitido para proyectos académicos NO comerciales tras aprobación.
+  // La clave queda exclusivamente en Render/Node, nunca en React o Vercel.
+  const production=process.env.NODE_ENV==='production';
+  const gnewsReady=configured('GNEWS_API_KEY') && (!production || process.env.GNEWS_EDUCATION_APPROVED==='true');
+  if(gnewsReady){
+    const typed=String(req.query.q||'').replace(/[\x00-\x1f]/g,' ').trim().slice(0,90);
+    const league=LEAGUES.find(x=>x.id===Number(req.query.league));
+    const query=typed || (league ? league.name : 'fútbol');
+    const from=new Date(Date.now()-48*3600_000).toISOString();
+    const to=new Date().toISOString();
+    const url=new URL('https://gnews.io/api/v4/search');
+    // 10 artículos por consulta funciona también con la modalidad gratuita de prueba.
+    for(const [k,v] of Object.entries({q:query,lang:'es',max:'10',from,to,sortby:'publishedAt',nullable:'description,image'}))url.searchParams.set(k,v);
+    const bucket=Math.floor(Date.now()/(30*60_000));
+    const r=await remember('gnews:'+query.toLowerCase()+':'+bucket,30*60_000,()=>httpJson(url,{'X-Api-Key':process.env.GNEWS_API_KEY}),{staleOnError:true});
+    const items=(r.value.articles||[]).filter(x=>x.title&&/^https?:\/\//.test(x.url||''))
+      .map(x=>({title:x.title,description:x.description||'',image:x.image||null,source:x.source?.name||'Medio',url:x.url,publishedAt:x.publishedAt}));
+    return res.json({items,source:'gnews',from,to,query,stale:r.stale,notice:'Noticias en español de las últimas 48 horas. La disponibilidad y el retraso dependen del plan GNews.'});
+  }
+  if(production && process.env.NEWS_PUBLIC_ENABLED!=='true')
+    return res.json({items:[],source:'unavailable',notice:'Para activar noticias públicas, solicita acceso académico de GNews, configura GNEWS_API_KEY y GNEWS_EDUCATION_APPROVED=true en Render. NewsAPI Developer no permite producción.'});
   // NewsAPI Developer solo autoriza desarrollo: no consultarla desde un sitio público.
   // Activa NEWS_PUBLIC_ENABLED=true únicamente con una licencia que permita producción.
   if(process.env.NODE_ENV==='production' && process.env.NEWS_PUBLIC_ENABLED!=='true')
