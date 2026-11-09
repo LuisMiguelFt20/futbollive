@@ -1,3 +1,4 @@
+import {mountLocalAuth} from './auth.js';
 import express from 'express';
 
 import cors from 'cors';
@@ -17,6 +18,15 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
+// Auth desde MySQL tanto en desarrollo como en Render, cuando se habilita.
+const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true' || (process.env.NODE_ENV !== 'production' && process.env.LOCAL_AUTH_ENABLED === 'true');
+if (AUTH_ENABLED) {
+  if (process.env.NODE_ENV === 'production' && !['DB_HOST','DB_USER','DB_PASSWORD','DB_NAME'].every(k => process.env[k]?.trim())) {
+    throw new Error('Faltan variables DB_HOST, DB_USER, DB_PASSWORD o DB_NAME para la autenticación en producción');
+  }
+  mountLocalAuth(app);
+}
+
 
 const PORT = Number(process.env.PORT || 3001);
 

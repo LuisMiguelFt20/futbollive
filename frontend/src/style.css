@@ -364,3 +364,48 @@
 .manual-video-item span:first-child{display:flex;flex-direction:column;gap:4px}
 .manual-video-item small{color:#8db5cb}
 .manual-video-item span:last-child{color:#1fe39d;white-space:nowrap;font-size:12px;font-weight:700}
+
+/* ===== Acceso local XAMPP: se muestra solo con VITE_LOCAL_AUTH=true ===== */
+.fl-account-actions{display:flex;align-items:center;gap:10px;margin-left:auto}.fl-greeting{font-size:12px;color:var(--text,#e6eef5);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fl-login-trigger,.fl-admin-trigger{display:inline-flex;align-items:center;gap:6px;border:1px solid #39b98b;background:#123d35;color:#e7fff4;padding:9px 13px;border-radius:12px;cursor:pointer;font-weight:700;font-size:12px}.fl-admin-trigger{border-color:#6c65e6;background:#29244d}.fl-auth-shade{position:fixed;inset:0;background:rgba(5,12,20,.84);z-index:2000;display:flex;justify-content:center;align-items:center;padding:20px;backdrop-filter:blur(6px)}.fl-auth-card,.fl-admin-card{background:#131e30;color:#eef8ff;border:1px solid #34435b;border-radius:22px;position:relative;box-shadow:0 25px 80px #0009;padding:30px;width:min(440px,100%);max-height:90vh;overflow:auto}.fl-auth-mark{font-size:37px}.fl-auth-card h2,.fl-admin-card h2{font-size:25px;margin:10px 0}.fl-auth-card p,.fl-admin-card p{color:#9aabc2;margin:0 0 20px}.fl-auth-card label{display:block;margin:15px 0;font-size:13px;font-weight:700}.fl-auth-card input{display:block;margin-top:7px;background:#0a1221;border:1px solid #34465c;padding:12px 13px;border-radius:10px;color:white;width:100%;font:inherit}.fl-auth-card input:focus{outline:2px solid #2bbf92}.fl-auth-primary{width:100%;padding:13px;border:0;background:#2ecb97;color:#09271f;border-radius:11px;font-weight:800;cursor:pointer}.fl-auth-primary:disabled{opacity:.5}.fl-auth-swap{display:block;margin:18px auto 0;background:transparent;color:#89deb9;border:0;cursor:pointer}.fl-auth-close{position:absolute;top:18px;right:18px;background:transparent;border:0;color:#d5e2ed;cursor:pointer}.fl-auth-error{background:#642934;color:#ffe6e6;border-radius:10px;padding:12px;font-size:13px}.fl-admin-card{width:min(910px,100%)}.fl-admin-card h2{display:flex;gap:8px;align-items:center}.fl-admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}.fl-admin-stats div{background:#182b3e;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:6px}.fl-admin-stats b{font-size:28px;color:#42d4a3}.fl-admin-stats span{font-size:12px}.fl-admin-scroll{overflow:auto}.fl-admin-card table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.fl-admin-card th,.fl-admin-card td{padding:12px;border-bottom:1px solid #394559}.fl-admin-card th{color:#88e3be}.fl-admin-card td button{background:#283b59;color:white;border:1px solid #64748b;border-radius:8px;padding:7px;cursor:pointer}.fl-floating-error{position:fixed;bottom:20px;right:20px;z-index:2100;background:#762d3b;color:#fff;border-radius:12px;padding:12px;cursor:pointer}@media(max-width:760px){.fl-greeting{display:none}.fl-admin-trigger{font-size:0}.fl-admin-trigger svg{width:18px}.fl-admin-stats{grid-template-columns:1fr}.fl-account-actions{gap:4px}.fl-login-trigger{padding:8px}}
+
+/* === FUTBOLLIVE LOCAL · HEADER CON LOGIN VISIBLE === */
+.topbar.topbar-premium{
+  grid-template-columns:minmax(188px,var(--sidebar-width)) minmax(0,1fr) max-content 44px;
+  column-gap:clamp(10px,1.3vw,20px);align-items:center;
+}
+.topbar-premium .topnav-premium{min-width:0;max-width:none;gap:0;justify-content:space-evenly}
+.topbar-premium .topnav-premium button{font-size:clamp(13px,1.1vw,17px);padding:0 clamp(4px,.65vw,13px)}
+.topbar-premium .fl-account-actions{margin:0;flex:0 0 auto;justify-self:end;min-width:max-content}
+.topbar-premium .fl-login-trigger,.topbar-premium .fl-admin-trigger{font-size:13px;padding:11px 15px;white-space:nowrap;min-height:42px;box-shadow:0 3px 15px #00cf9730}
+.topbar-premium .theme-control{justify-self:end}
+.fl-hero-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.fl-hero-login{display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border-radius:12px;background:#132b39e0;color:#d8fff0;border:1px solid #42d2a5;font-size:14px;font-weight:800;cursor:pointer;backdrop-filter:blur(4px)}
+.fl-hero-login:hover,.fl-login-trigger:hover{background:#165743;color:#fff}
+.fl-hero-welcome{font-size:13px;color:#d5ffeb;font-weight:700}
+.fl-db-indicator{display:flex;align-items:center;gap:9px;font-size:12px;border:1px solid #47556c;background:#1a2b3c;border-radius:10px;padding:9px 11px;line-height:1.4}
+.fl-db-dot{display:inline-block;flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#e0af44}
+.fl-db-indicator.conectado{color:#a4f1cd;border-color:#287b62}.fl-db-indicator.conectado .fl-db-dot{background:#21e59c}
+.fl-db-indicator.desconectado{color:#ffc4c4;border-color:#854252}.fl-db-indicator.desconectado .fl-db-dot{background:#ff6666}
+@media(max-width:1250px){
+ .topbar.topbar-premium{grid-template-columns:minmax(155px,195px) minmax(0,1fr) max-content 38px;padding:0 12px;gap:7px}
+ .topbar-premium .logo{font-size:22px}
+ .topbar-premium .topnav-premium button{font-size:13px;padding:0 5px}
+ .topbar-premium .fl-login-trigger{font-size:12px;padding:9px}
+ .topbar-premium .fl-greeting{max-width:90px}
+}
+@media(max-width:1059px){
+ .topbar.topbar-premium{display:flex;justify-content:space-between;gap:8px}
+ .topbar-premium .topnav-premium{flex:1;overflow-x:auto}
+ .topbar-premium .fl-account-actions{flex-shrink:0;margin-left:0}
+ .topbar-premium .theme-control{flex-shrink:0}
+}
+@media(max-width:760px){
+ .topbar-premium .fl-login-trigger{font-size:12px;min-width:42px;white-space:nowrap}
+ .fl-hero-actions{gap:8px}.fl-hero-login{font-size:12px;padding:10px}
+}
+@media(max-width:630px){
+ .topbar.topbar-premium{flex-wrap:wrap}
+ .topbar-premium .topnav-premium{order:5;flex-basis:100%;width:100%;flex-grow:1}
+ .topbar-premium .fl-account-actions{margin-left:auto}
+ .topbar-premium .theme-control{margin-left:0}
+}
